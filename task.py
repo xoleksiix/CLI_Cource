@@ -1,7 +1,7 @@
+import argparse
 import datetime
 import json
 import requests
-import argparse
 
 
 def available_currency() -> set:
@@ -124,7 +124,8 @@ def get_info():
     API request with formatted command line arguments.
     """
     currency, date = modify_args()
-    if None not in [date, currency]:                        # check for data
+    # check for dataф
+    if None not in [date, currency]:
         url = f"https://bank.gov.ua/NBUStatService/v1/statdirectory/" \
               f"exchange?valcode={currency}&date={date}&json"
         response = requests.request("GET", url)
