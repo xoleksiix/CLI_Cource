@@ -121,7 +121,7 @@ def modify_args() -> tuple:
 
 def get_info():
     """
-    API request with formatted command line arguments.
+    API request with formatted arguments from command line.
     """
     currency, date = modify_args()
     # check for dataф
