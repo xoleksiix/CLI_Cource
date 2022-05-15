@@ -61,29 +61,18 @@ def parser() -> tuple:
     Empty if no arguments are received or [0]currency, [1]date.
     :return list:
     """
-    # parser_args = argparse.ArgumentParser()
-    # parser_args.add_argument(
-    #     "currency_date", nargs="*", default=[],
-    #     help="input currency"
-    #          "and optional date. "
-    #          "format <XYZ(currency code USD/etc.) yyyy-mm-dd>"
-    # )
-    # return parser_args.parse_args().currency_date
     parser_args = argparse.ArgumentParser()
     parser_args.add_argument("currency", nargs="?", default=None)
-    parser_args.add_argument("date", nargs="?",
-                             default=datetime.datetime.today().strftime(
-                                 "%Y-%m-%d"))
-
+    parser_args.add_argument(
+        "date", nargs="?",
+        default=datetime.datetime.today().strftime("%Y-%m-%d")
+    )
     return parser_args.parse_args().currency, parser_args.parse_args().date
 
 
 def modify_args() -> tuple:
     """
-    Checks the incoming arguments for a match, if there are no arguments
-    or the argument does not match.
-    Returns None (except for the date,
-    the date is returned today if there is a currency)
+    Checks the incoming arguments for a match.
     :return: tuple
     """
     currency, date = parser()
@@ -103,34 +92,7 @@ def modify_args() -> tuple:
                 date = None
     else:
         pretty_printer("SystemError")
-
     return currency, date
-    # args = parser()
-    # if len(args) == 0:
-    #     pretty_printer("SystemError")
-    #     return None, None
-    # else:
-    #     currency = args[0].upper()  # checking the first argument
-    #     if check_currency(currency) == 0:
-    #         pretty_printer(
-    #             f"{currency}",
-    #             f"Invalid currency name: {currency}"
-    #         )
-    #         currency = None
-    #
-    #     if len(args) > 1:  # checking the second argument if it exists
-    #         date = args[1]
-    #         if check_date(date) == 0:
-    #             pretty_printer(f"Invalid date {date}")
-    #             date = None
-    #         else:
-    #             date = date.replace("-", "")
-    #         # date in a format suitable for the request
-    #     else:
-    #         date = datetime.datetime.today().strftime("%Y%m%d")
-    #         # add today if the date has not get
-    #
-    #     return currency, date
 
 
 def get_info():
@@ -138,7 +100,6 @@ def get_info():
     API request with formatted arguments from command line.
     """
     currency, date = modify_args()
-    # check for data
     if currency and date:
         url = f"https://bank.gov.ua/NBUStatService/v1/statdirectory/" \
               f"exchange?valcode={currency}&date={date}&json"
