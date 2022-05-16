@@ -3,24 +3,32 @@ import datetime
 import json
 import requests
 
-ALL_CURRENCY = ['NZD', 'LYD', 'XDR', 'LBP', 'XAG', 'ILS', 'JPY', 'RUB',
-                'XAU', 'THB', 'AMD', 'BRL', 'GBP', 'VND', 'HKD', 'MDL',
-                'BYN', 'KRW', 'MAD', 'AZN', 'TWD', 'ZAR', 'CAD', 'EUR',
-                'DZD', 'TMT', 'CHF', 'MXN', 'TRY', 'CNY', 'AUD', 'KZT',
-                'EGP', 'NOK', 'UZS', 'SEK', 'TJS', 'PKR', 'HRK', 'XPT',
-                'SAR', 'XPD', 'IDR', 'DOP', 'RSD', 'GEL', 'MYR', 'IQD',
-                'TND', 'BGN', 'HUF', 'DKK', 'CZK', 'INR', 'SGD', 'RON',
-                'IRR', 'KGS', 'PLN', 'BDT', 'AED', 'USD']
+
+def parser() -> tuple:
+    """
+    It accepts arguments from the command line. Returns a list.
+    Empty if no arguments are received or [0]currency, [1]date.
+    :return list:
+    """
+    parser_args = argparse.ArgumentParser()
+    parser_args.add_argument("currency", nargs="?", default=None)
+    parser_args.add_argument(
+        "date", nargs="?",
+        default=datetime.datetime.today().strftime("%Y-%m-%d")
+    )
+    return parser_args.parse_args().currency, parser_args.parse_args().date
 
 
-def check_currency(currency: str, all_currency: list) -> bool:
+def pretty_printer(*args):
     """
-    Checking the value in the list of currencies.
-    :param all_currency: list
-    :param currency: str
-    :return: bool
+    Takes strings (one or two, ignores the rest) as arguments
+    and prints them out wrapped in character lines.
     """
-    return currency in all_currency
+    frst_line, scnd_line = "______________", "=============="
+    if len(args) == 1:
+        print(frst_line, f"{args[0]}", scnd_line, sep="\n")
+    else:
+        print(frst_line, f"{args[0]}", "", f"{args[1]}", scnd_line, sep="\n")
 
 
 def check_date(date: str) -> bool:
@@ -43,74 +51,64 @@ def check_date(date: str) -> bool:
         return (date - datetime.datetime.now()).days < 0 and date.year > 1998
 
 
-def pretty_printer(*args):
+def modify_date(date: str) -> str or None:
     """
-    Takes strings (one or two, ignores the rest) as arguments
-    and prints them out wrapped in character lines.
+    Checks the date and formats it into
+    the appropriate format for the request.
+    If non-correct date return None.
+    @param date: str
+    @return: str or None
     """
-    frst_line, scnd_line = "______________", "=============="
-    if len(args) == 1:
-        print(frst_line, f"{args[0]}", scnd_line, sep="\n")
+    if check_date(date):
+        return date.replace("-", "")
     else:
-        print(frst_line, f"{args[0]}", "", f"{args[1]}", scnd_line, sep="\n")
+        pretty_printer(f"Invalid date {date}")
+        return None
 
 
-def parser() -> tuple:
+def get_data(date: str) -> list[dict]:
     """
-    It accepts arguments from the command line. Returns a list.
-    Empty if no arguments are received or [0]currency, [1]date.
-    :return list:
+    API requests with date params, returns data for the selected date
+    with all available currencies.
+    Returns an empty list if something went wrong.
+    @param date: str
+    @return: list of dicts
     """
-    parser_args = argparse.ArgumentParser()
-    parser_args.add_argument("currency", nargs="?", default=None)
-    parser_args.add_argument(
-        "date", nargs="?",
-        default=datetime.datetime.today().strftime("%Y-%m-%d")
-    )
-    return parser_args.parse_args().currency, parser_args.parse_args().date
-
-
-def modify_args() -> tuple:
-    """
-    Checks the incoming arguments for a match.
-    :return: tuple
-    """
-    currency, date = parser()
-    if currency:
-        currency = currency.upper()
-        if check_currency(currency, ALL_CURRENCY) == 0:
-            pretty_printer(
-                f"{currency}",
-                f"Invalid currency name: {currency}"
-            )
-            currency = None
-        else:
-            if check_date(date):
-                date = datetime.datetime.today().strftime("%Y%m%d")
-            else:
-                pretty_printer(f"Invalid date {date}")
-                date = None
-    else:
+    url = f"https://bank.gov.ua/NBUStatService/v1/statdirectory" \
+          f"/exchange?date={date}&json"
+    response = requests.request("GET", url)
+    if response.status_code != 200 or json.loads(response.text) == []:
         pretty_printer("SystemError")
-    return currency, date
+        return []
+    else:
+        return json.loads(response.text)
 
 
 def get_info():
-    """
-    API request with formatted arguments from command line.
-    """
-    currency, date = modify_args()
+    currency, raw_date = parser()  # take
+    date = modify_date(raw_date)  # modify date
+
     if currency and date:
-        url = f"https://bank.gov.ua/NBUStatService/v1/statdirectory/" \
-              f"exchange?valcode={currency}&date={date}&json"
-        response = requests.request("GET", url)
-        if response.status_code != 200 or json.loads(response.text) == []:
-            pretty_printer("SystemError")
-        else:
-            # getting a dictionary with data and course values by key
-            info = json.loads(response.text)[0]
-            rate = info.get("rate")
-            pretty_printer(currency, rate)
+        currency = currency.upper()
+        data = get_data(date)
+        if data:
+            # search currency and rate in dicts
+            rate = [
+                i.get("rate") for i in data if
+                i.get("cc") == currency
+            ]
+            if rate:
+                # if found print currency and rate
+                pretty_printer(currency, *rate)
+            else:
+                # if not found currency print error
+                pretty_printer(
+                    f"{currency}",
+                    f"Invalid currency name: {currency}"
+                )
+    elif not currency:
+        # if the currency did not come from the command line
+        pretty_printer("SystemError")
 
 
 if __name__ == '__main__':
